@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Violation review · {{ exam.title }}{% endblock %}
+{% block content %}
+<h1>Violation review — {{ exam.title }}</h1>
+<p>
+  Filter:
+  <a href="?">all</a> · <a href="?decision=pending">pending</a> ·
+  <a href="?decision=upheld">upheld</a> · <a href="?decision=dismissed">dismissed</a> ·
+  <a href="?decision=penalized">penalized</a>
+</p>
+{% for v in violations %}
+<div class="card">
+  <p>
+    <span class="badge {% if v.severity == 'high' %}bad{% elif v.severity == 'medium' %}warn{% else %}info{% endif %}">{{ v.severity }}</span>
+    <strong>{{ v.event_type }}</strong>
+    <span class="muted">{{ v.attempt.student.email }} · {{ v.server_ts|date:"M d, H:i:s" }}</span>
+    {% if v.adjudication %}
+      <span class="badge ok">{{ v.adjudication.decision }}</span>
+      <span class="muted">by {{ v.adjudication.adjudicator }}: {{ v.adjudication.reason }}</span>
+      {% if v.adjudication.appeal %}<br><span class="badge warn">appealed</span> <span class="muted">{{ v.adjudication.appeal.reason }}</span>{% endif %}
+    {% else %}
+      <span class="badge warn">pending</span>
+    {% endif %}
+  </p>
+  {% if v.payload %}<p class="muted" style="font-size:0.85rem;">{{ v.payload }}</p>{% endif %}
+  {% if not v.adjudication %}
+  <form method="post" action="{% url 'web:violation-adjudicate' v.id %}" style="display:flex;gap:0.5rem;align-items:flex-end;">
+    {% csrf_token %}
+    <div><label>Decision</label>
+      <select name="decision"><option value="uphold">Uphold</option><option value="dismiss">Dismiss</option><option value="penalize">Penalize</option></select></div>
+    <div style="flex:1;"><label>Reason</label><input name="reason" placeholder="Reason (kept forever in the audit trail)"></div>
+    <div><button class="btn" type="submit">Decide</button></div>
+  </form>
+  {% endif %}
+</div>
+{% empty %}
+<div class="card"><p class="muted">No violations found.</p></div>
+{% endfor %}
+{% endblock %}

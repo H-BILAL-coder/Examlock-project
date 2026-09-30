@@ -1,0 +1,63 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: examlock
+      POSTGRES_USER: examlock
+      POSTGRES_PASSWORD: examlock
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  web:
+    build: .
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    env_file: .env
+    environment:
+      DB_ENGINE: postgres
+      DB_HOST: postgres
+      CELERY_EAGER: "0"
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+
+  celery:
+    build: .
+    command: celery -A config worker --loglevel=info
+    env_file: .env
+    environment:
+      DB_ENGINE: postgres
+      DB_HOST: postgres
+      CELERY_EAGER: "0"
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+
+  beat:
+    build: .
+    command: celery -A config beat --loglevel=info
+    env_file: .env
+    environment:
+      DB_ENGINE: postgres
+      DB_HOST: postgres
+      CELERY_EAGER: "0"
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+
+volumes:
+  pgdata:

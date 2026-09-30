@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Result · {{ attempt.exam.title }}{% endblock %}
+{% block content %}
+<h1>{{ attempt.exam.title }}</h1>
+<p>
+  <span class="badge {% if attempt.status == 'submitted' %}ok{% elif attempt.status == 'expired' %}warn{% else %}info{% endif %}">{{ attempt.status }}</span>
+  {% if attempt.score_snapshot != None %}<strong>Score: {{ attempt.score_snapshot }}</strong>{% endif %}
+  {% if attempt.flagged %}<span class="badge bad">flagged for review</span>{% endif %}
+  <span class="muted">Submitted: {{ attempt.submitted_at|date:"M d, H:i"|default:"—" }}</span>
+</p>
+
+<div class="card">
+  <h3>Answers</h3>
+  {% for a in answers %}
+    <div style="margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid #334155;">
+      <p><strong>Q:</strong> {{ a.question.stem|truncatewords:25 }}
+         <span class="muted">({{ a.question.qtype }})</span></p>
+      {% if a.selected_choice_ids %}
+        <p class="muted">Selected: {{ a.selected_choice_ids|join:", " }}</p>
+      {% endif %}
+      {% if a.text_answer %}<p><em>{{ a.text_answer|truncatewords:40 }}</em></p>{% endif %}
+      <p>Marks: <strong>{{ a.marks_awarded|default:"pending" }}</strong>
+         <span class="muted">· revision {{ a.revision }} · saved {{ a.server_received_at|date:"H:i:s" }}</span></p>
+    </div>
+  {% empty %}
+    <p class="muted">No answers recorded.</p>
+  {% endfor %}
+</div>
+
+{% if violations %}
+<div class="card">
+  <h3>Integrity events on this attempt</h3>
+  <table><tr><th>Time</th><th>Event</th><th>Severity</th><th>Decision</th></tr>
+  {% for v in violations %}
+    <tr><td>{{ v.server_ts|date:"H:i:s" }}</td><td>{{ v.event_type }}</td><td>{{ v.severity }}</td><td>{{ v.adjudication.decision|default:"pending" }}</td></tr>
+  {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% endblock %}

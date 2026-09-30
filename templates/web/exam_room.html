@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Exam room · {{ attempt.exam.title }}{% endblock %}
+{% block head %}
+<style>
+  #fs-overlay { position:fixed; inset:0; background:rgba(2,6,23,0.97); display:flex; align-items:center; justify-content:center; z-index:50; text-align:center; }
+  #fs-overlay .inner { max-width:480px; padding:2rem; }
+  .qcard { background:var(--card); border-radius:12px; padding:1.25rem 1.5rem; margin-bottom:1rem; }
+  .qnav { position:sticky; top:0; background:#0b1220; padding:0.6rem 0; display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center; z-index:10; }
+  .qnav button.dot { width:2.2rem; height:2.2rem; border-radius:8px; border:1px solid #334155; background:#1e293b; color:var(--text); cursor:pointer; }
+  .qnav button.dot.answered { background:#064e3b; border-color:var(--ok); }
+  #timer { font-size:1.4rem; font-weight:800; margin-left:auto; }
+  #timer.low { color:var(--danger); }
+  .choice { display:block; padding:0.5rem; border-radius:8px; cursor:pointer; }
+  .choice:hover { background:#0f172a; }
+  #warnbar { display:none; background:#78350f; color:var(--warn); padding:0.6rem 1rem; border-radius:8px; margin-bottom:1rem; font-weight:600; }
+  #save-state { font-size:0.85rem; color:var(--muted); }
+</style>
+{% endblock %}
+{% block content %}
+<div id="fs-overlay">
+  <div class="inner">
+    <h2>Exam room: {{ attempt.exam.title }}</h2>
+    <p class="muted">This exam is integrity-monitored: tab switches, fullscreen exits, and copy/paste attempts are logged and reviewed by your instructor. The timer is enforced by the server.</p>
+    <p><strong id="q-count"></strong></p>
+    <button class="btn" id="enter-btn">Enter fullscreen &amp; start</button>
+  </div>
+</div>
+
+<div class="qnav">
+  <div id="dots" style="display:flex;gap:0.4rem;flex-wrap:wrap;"></div>
+  <div id="timer">--:--</div>
+</div>
+<div id="warnbar"></div>
+<p><span id="save-state">Not saved yet</span> · <span class="muted">Integrity warnings: <strong id="warn-count">0</strong></span></p>
+<div id="questions"></div>
+<div class="card" style="text-align:center;">
+  <button class="btn danger" id="submit-btn">Submit exam</button>
+</div>
+
+<div id="confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(2,6,23,0.9);z-index:60;align-items:center;justify-content:center;">
+  <div class="card" style="max-width:420px;">
+    <h3>Submit exam?</h3>
+    <p class="muted" id="confirm-detail"></p>
+    <button class="btn danger" id="confirm-yes">Yes, submit</button>
+    <button class="btn ghost" id="confirm-no">Keep working</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.EXAMLOCK = {
+    attemptId: "{{ attempt.id }}",
+    apiBase: "/api/v1",
+    resultUrl: "{% url 'web:attempt-result' attempt.id %}",
+  };
+</script>
+<script src="/static/js/exam-room.js"></script>
+{% endblock %}

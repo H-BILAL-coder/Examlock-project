@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ exam.title }} · ExamLock{% endblock %}
+{% block content %}
+<h1>{{ exam.title }}</h1>
+<p>
+  <span class="badge {% if exam.status == 'published' %}ok{% else %}warn{% endif %}">{{ exam.status }}</span>
+  <span class="muted">{{ exam.duration_minutes }} min · {{ exam.opens_at|date:"M d, H:i" }} → {{ exam.closes_at|date:"M d, H:i" }}</span>
+</p>
+<p><a class="btn ghost" href="{% url 'web:violation-review' exam.id %}">Review violations</a>
+   <a class="btn ghost" href="/api/v1/exams/{{ exam.id }}/results/export/">Export CSV</a></p>
+
+<div class="card">
+  <h3>Questions ({{ questions|length }})</h3>
+  <table><tr><th>#</th><th>Type</th><th>Topic</th><th>Version</th><th>Marks</th><th>Stem</th></tr>
+  {% for eq in questions %}
+    <tr><td>{{ forloop.counter }}</td><td>{{ eq.question.qtype }}</td><td>{{ eq.question.topic }}</td>
+        <td>v{{ eq.question_version }}</td><td>{{ eq.marks_override|default:eq.question.marks }}</td>
+        <td>{{ eq.question.stem|truncatewords:12 }}</td></tr>
+  {% endfor %}
+  </table>
+</div>
+
+<div class="card">
+  <h3>Enrollments ({{ enrollments|length }})</h3>
+  <p class="muted">{% for e in enrollments %}{{ e.student.email }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+</div>
+
+<div class="card">
+  <h3>Attempts</h3>
+  <table><tr><th>Student</th><th>Status</th><th>Score</th><th>Flagged</th><th>Started</th><th></th></tr>
+  {% for a in attempts %}
+    <tr><td>{{ a.student.email }}</td>
+        <td><span class="badge {% if a.status == 'submitted' %}ok{% elif a.status == 'expired' %}warn{% else %}info{% endif %}">{{ a.status }}</span></td>
+        <td>{{ a.score_snapshot|default:"—" }}</td>
+        <td>{% if a.flagged %}<span class="badge bad">yes</span>{% else %}—{% endif %}</td>
+        <td>{{ a.started_at|date:"M d, H:i" }}</td>
+        <td><a href="{% url 'web:attempt-result' a.id %}">view</a></td></tr>
+  {% empty %}
+    <tr><td colspan="6" class="muted">No attempts yet.</td></tr>
+  {% endfor %}
+  </table>
+</div>
+
+<div class="card">
+  <h3>Latest integrity events</h3>
+  <table><tr><th>Time</th><th>Student</th><th>Event</th><th>Severity</th><th>Decision</th></tr>
+  {% for v in violations %}
+    <tr><td>{{ v.server_ts|date:"M d, H:i:s" }}</td><td>{{ v.attempt.student.email }}</td><td>{{ v.event_type }}</td>
+        <td><span class="badge {% if v.severity == 'high' %}bad{% elif v.severity == 'medium' %}warn{% else %}info{% endif %}">{{ v.severity }}</span></td>
+        <td>{{ v.adjudication.decision|default:"—" }}</td></tr>
+  {% empty %}
+    <tr><td colspan="5" class="muted">No events.</td></tr>
+  {% endfor %}
+  </table>
+</div>
+{% endblock %}

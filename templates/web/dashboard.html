@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · ExamLock{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+
+{% if user.role == "student" %}
+  {% for row in rows %}
+  <div class="card">
+    <h3>{{ row.exam.title }}</h3>
+    <p class="muted">{{ row.exam.instructions|truncatewords:30 }}</p>
+    <p>
+      <span class="badge info">{{ row.exam.duration_minutes }} min</span>
+      <span class="muted">Window: {{ row.exam.opens_at|date:"M d, H:i" }} → {{ row.exam.closes_at|date:"M d, H:i" }}</span>
+      <span class="muted">Attempts used: {{ row.used }}/{{ row.exam.attempts_allowed }}</span>
+    </p>
+    {% if row.active_attempt %}
+      <a class="btn" href="{% url 'web:exam-room' row.active_attempt.id %}">Resume exam</a>
+    {% elif row.can_start %}
+      <button class="btn" onclick="startExam('{{ row.exam.id }}')">Start exam</button>
+    {% endif %}
+    {% for a in row.attempts %}
+      <p class="muted" style="margin:0.4rem 0;">
+        Attempt {{ a.started_at|date:"M d, H:i" }} ·
+        <span class="badge {% if a.status == 'submitted' %}ok{% elif a.status == 'expired' %}warn{% else %}info{% endif %}">{{ a.status }}</span>
+        {% if a.score_snapshot != None %} · Score: {{ a.score_snapshot }}{% endif %}
+        {% if a.flagged %} · <span class="badge bad">flagged</span>{% endif %}
+        · <a href="{% url 'web:attempt-result' a.id %}">result</a>
+      </p>
+    {% endfor %}
+  </div>
+  {% empty %}
+  <div class="card"><p class="muted">No exams assigned yet.</p></div>
+  {% endfor %}
+
+{% elif user.role == "instructor" %}
+  <div class="card"><p><strong>{{ exams|length }}</strong> exams · <strong>{{ bank_count }}</strong> question banks</p></div>
+  {% for exam in exams %}
+  <div class="card">
+    <h3><a href="{% url 'web:exam-detail' exam.id %}">{{ exam.title }}</a></h3>
+    <p>
+      <span class="badge {% if exam.status == 'published' %}ok{% else %}warn{% endif %}">{{ exam.status }}</span>
+      <span class="muted">{{ exam.attempt_count }} attempts</span>
+      {% if exam.flagged_count %}<span class="badge bad">{{ exam.flagged_count }} flagged</span>{% endif %}
+    </p>
+  </div>
+  {% empty %}
+  <div class="card"><p class="muted">No exams yet. Create one via the API or admin.</p></div>
+  {% endfor %}
+
+{% else %}
+  <div class="card">
+    <p>Users: <strong>{{ stats.users }}</strong> · Exams: <strong>{{ stats.exams }}</strong> ·
+       Attempts: <strong>{{ stats.attempts }}</strong> · Violations: <strong>{{ stats.violations }}</strong></p>
+    <p><a href="/admin/">Django admin</a> · <a href="/api/docs/">API docs</a></p>
+  </div>
+  <div class="card">
+    <h3>Recent attempts</h3>
+    <table><tr><th>Student</th><th>Exam</th><th>Status</th><th>Started</th></tr>
+    {% for a in recent_attempts %}
+      <tr><td>{{ a.student.email }}</td><td>{{ a.exam.title }}</td><td>{{ a.status }}</td><td>{{ a.started_at|date:"M d, H:i" }}</td></tr>
+    {% endfor %}
+    </table>
+  </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function getCookie(name) {
+  const v = document.cookie.split("; ").find(r => r.startsWith(name + "="));
+  return v ? decodeURIComponent(v.split("=")[1]) : "";
+}
+async function startExam(examId) {
+  const res = await fetch(`/api/v1/exams/${examId}/attempts/`, {
+    method: "POST",
+    headers: {"X-CSRFToken": getCookie("csrftoken"), "Content-Type": "application/json"},
+  });
+  const data = await res.json();
+  if (!res.ok) { alert(data.detail || "Could not start attempt"); return; }
+  sessionStorage.setItem("examlock_attempt_" + data.attempt_id, data.token);
+  window.location = `/room/${data.attempt_id}/`;
+}
+</script>
+{% endblock %}
