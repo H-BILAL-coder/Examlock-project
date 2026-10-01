@@ -25,7 +25,6 @@ Open http://127.0.0.1:8000/ and log in:
 
 | Role       | Email                     | Password      |
 |------------|---------------------------|---------------|
-| Admin      | admin@examlock.local      | admin123      |
 | Instructor | instructor@examlock.local | instructor123 |
 | Student    | student@examlock.local    | student123    |
 
